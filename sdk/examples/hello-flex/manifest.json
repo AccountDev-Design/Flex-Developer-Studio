@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "dev.accountdev.hola_flex",
+  "name": "Hola Flex",
+  "version": {
+    "name": "1.0.0",
+    "code": 1
+  },
+  "minFlexOS": "1.0.0",
+  "runtime": "flex-ui-1",
+  "entry": "app/main.flex.json",
+  "category": "Educación",
+  "summary": "Ejemplo oficial del Flex SDK",
+  "permissions": [
+    "notifications"
+  ],
+  "limits": {
+    "memoryKB": 256,
+    "storageKB": 64
+  }
+}
