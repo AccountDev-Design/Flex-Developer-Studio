@@ -1,0 +1,18 @@
+{
+  "name": "flex-cloud",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Flex Cloud: almacenamiento en la nube del ecosistema Flex (servicio + web de Flex Developer Studio)",
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": { "node": ">=22.13" },
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/server.js",
+    "dev": "FLEX_ACCOUNT_MODE=dev FLEX_CLOUD_DEV_LOGIN=1 node --disable-warning=ExperimentalWarning src/server.js",
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js",
+    "test:large": "FLEX_CLOUD_LARGE_TESTS=1 node --disable-warning=ExperimentalWarning --test test/large.test.js",
+    "test:e2e": "node --disable-warning=ExperimentalWarning test/e2e/run.js",
+    "check": "node scripts/check.js"
+  }
+}
