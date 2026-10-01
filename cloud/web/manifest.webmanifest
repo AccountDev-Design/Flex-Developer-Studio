@@ -1,0 +1,11 @@
+{
+  "name": "Flex Cloud",
+  "short_name": "Flex Cloud",
+  "description": "Tu nube del ecosistema Flex",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#070b16",
+  "theme_color": "#070b16",
+  "lang": "es",
+  "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

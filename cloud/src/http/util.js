@@ -36,7 +36,7 @@ export async function readJson(req, maxBytes) {
     const v = JSON.parse(Buffer.concat(chunks).toString('utf8'));
     if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error();
     return v;
-  } catch { throw E.invalid('JSON no valido.'); }
+  } catch { throw E.invalid('JSON no válido.'); }
 }
 
 export async function readBuffer(req, maxBytes) {

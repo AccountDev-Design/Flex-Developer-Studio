@@ -15,7 +15,9 @@ const STATIC_TYPES = {
   '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json; charset=utf-8',
   '.webmanifest': 'application/manifest+json', '.woff2': 'font/woff2',
 };
-const WEB_CSP = "default-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; style-src 'self'; script-src 'self'; " +
+// Scripts SOLO propios (ni en linea ni de terceros). Los estilos en linea si:
+// las barras de progreso fijan su anchura con style y no ejecutan nada.
+const WEB_CSP = "default-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; " +
                 "connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'";
 
 export function createApp({ cfg, service, gateway, log }) {
@@ -83,7 +85,11 @@ export function createApp({ cfg, service, gateway, log }) {
   const typeOf = (id) => (ID_RE.folder.test(id) ? 'folder' : 'file');
 
   // ----------------------------------------------------------------- rutas
-  router.add('GET', `${API}/health`, async (req, res) => ok(res, { service: 'flex-cloud', version: 1, time: Date.now() }));
+  router.add('GET', `${API}/health`, async (req, res) => ok(res, {
+    service: 'flex-cloud', version: 1, time: Date.now(),
+    // La web lo usa para ofrecer el acceso de desarrollo; en produccion es "remote".
+    accountMode: cfg.account.mode, devLogin: cfg.account.mode === 'dev' && cfg.account.devLogin,
+  }));
 
   router.add('GET', `${API}/me`, authed(async (req, res, { who, acc }) => {
     const a = who.identity.account;

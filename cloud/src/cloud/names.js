@@ -30,14 +30,14 @@ export const ID_RE = {
 export function normalizeName(raw) {
   if (typeof raw !== 'string') throw E.nameInvalid('El nombre es obligatorio.');
   const name = raw.normalize('NFC').trim();
-  if (!name) throw E.nameInvalid('El nombre no puede estar vacio.');
-  if (name === '.' || name === '..') throw E.nameInvalid('Ese nombre esta reservado.');
+  if (!name) throw E.nameInvalid('El nombre no puede estar vacío.');
+  if (name === '.' || name === '..') throw E.nameInvalid('Ese nombre está reservado.');
   // eslint-disable-next-line no-control-regex
   if (/[\u0000-\u001f\u007f/\\]/.test(name)) throw E.nameInvalid('El nombre no puede contener "/", "\\" ni caracteres de control.');
-  if (/[\u202a-\u202e\u2066-\u2069]/.test(name)) throw E.nameInvalid('El nombre contiene caracteres de control de direccion de texto.');
-  if (Buffer.byteLength(name, 'utf8') > MAX_NAME_BYTES) throw E.nameInvalid('El nombre es demasiado largo (maximo 255 bytes).');
+  if (/[\u202a-\u202e\u2066-\u2069]/.test(name)) throw E.nameInvalid('El nombre contiene caracteres de control de dirección de texto.');
+  if (Buffer.byteLength(name, 'utf8') > MAX_NAME_BYTES) throw E.nameInvalid('El nombre es demasiado largo (máximo 255 bytes).');
   // Pares sustitutos sueltos (texto UTF-16 roto) no son un nombre valido.
-  if (!name.isWellFormed()) throw E.nameInvalid('El nombre no es texto Unicode valido.');
+  if (!name.isWellFormed()) throw E.nameInvalid('El nombre no es texto Unicode válido.');
   return name;
 }
 

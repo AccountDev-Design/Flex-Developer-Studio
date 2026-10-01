@@ -152,7 +152,7 @@ export class CloudService {
   updateFolder(accountId, id, { name, parentId }) {
     return this.db.tx(() => {
       const f = this.#liveFolder(accountId, id);
-      if (!f) throw E.invalid('La carpeta raiz no se puede cambiar.');
+      if (!f) throw E.invalid('La carpeta raíz no se puede cambiar.');
       let parent = f.parent_id;
       if (parentId !== undefined) {
         parent = this.#parentId(accountId, parentId);
@@ -194,8 +194,11 @@ export class CloudService {
     const view = q.view || 'folder';
     const dir = (q.order || '').toLowerCase() === 'desc' ? 'DESC' : 'ASC';
     const sortCol = { name: 'name_key', date: 'updated_at', size: 'size', type: 'kind' }[q.sort] || null;
-    const kinds = ['photo', 'video', 'audio', 'document', 'archive', 'other'];
+    const kinds = ['photo', 'video', 'audio', 'document', 'archive', 'other', 'media'];
     const kind = kinds.includes(q.kind) ? q.kind : null;
+    // "media" = fotos y videos (la vista Fotos de la web y la Galeria del P4).
+    const kindSql = kind === 'media' ? "kind IN ('photo', 'video')" : 'kind = ?';
+    const kindArgs = kind && kind !== 'media' ? [kind] : [];
     let rows;
     let folder = null;
 
@@ -209,8 +212,8 @@ export class CloudService {
         ORDER BY deleted_at DESC, id LIMIT ? OFFSET ?`, accountId, accountId, limit + 1, offset);
     } else if (view === 'recent') {
       rows = this.db.all(`SELECT 'file' AS t, * FROM files WHERE account_id = ? AND deleted_at IS NULL
-                          ${kind ? 'AND kind = ?' : ''} ORDER BY updated_at DESC, id LIMIT ? OFFSET ?`,
-        ...(kind ? [accountId, kind, limit + 1, offset] : [accountId, limit + 1, offset]));
+                          ${kind ? 'AND ' + kindSql : ''} ORDER BY updated_at DESC, id LIMIT ? OFFSET ?`,
+        accountId, ...kindArgs, limit + 1, offset);
     } else if (view === 'search') {
       const term = String(q.q || '').normalize('NFC').toLocaleLowerCase('und').trim().slice(0, 100);
       if (!term) return { items: [], nextCursor: null, folder: null };
@@ -220,9 +223,9 @@ export class CloudService {
           WHERE account_id = ? AND deleted_at IS NULL AND name_key LIKE ? ESCAPE '\\'
         UNION ALL
         SELECT 'file' AS t, id, name, name_key, size, kind, updated_at FROM files
-          WHERE account_id = ? AND deleted_at IS NULL AND name_key LIKE ? ESCAPE '\\' ${kind ? 'AND kind = ?' : ''}
+          WHERE account_id = ? AND deleted_at IS NULL AND name_key LIKE ? ESCAPE '\\' ${kind ? 'AND ' + kindSql : ''}
         ORDER BY t DESC, ${sortCol || 'name_key'} ${dir}, id LIMIT ? OFFSET ?`,
-        ...[accountId, like, accountId, like, ...(kind ? [kind] : []), limit + 1, offset]);
+        ...[accountId, like, accountId, like, ...kindArgs, limit + 1, offset]);
     } else {
       const parent = this.#parentId(accountId, q.parentId);
       folder = this.getFolder(accountId, parent ?? 'root');
@@ -233,9 +236,9 @@ export class CloudService {
           WHERE account_id = ? AND IFNULL(parent_id, '') = ? AND deleted_at IS NULL ${kind ? 'AND 0' : ''}
         UNION ALL
         SELECT 'file' AS t, id, name, name_key, size, kind, updated_at FROM files
-          WHERE account_id = ? AND IFNULL(parent_id, '') = ? AND deleted_at IS NULL ${kind ? 'AND kind = ?' : ''}
+          WHERE account_id = ? AND IFNULL(parent_id, '') = ? AND deleted_at IS NULL ${kind ? 'AND ' + kindSql : ''}
         ORDER BY t DESC, ${order}, id LIMIT ? OFFSET ?`,
-        ...[accountId, p, accountId, p, ...(kind ? [kind] : []), limit + 1, offset]);
+        ...[accountId, p, accountId, p, ...kindArgs, limit + 1, offset]);
     }
 
     const more = rows.length > limit;
@@ -291,7 +294,7 @@ export class CloudService {
         return { batch, files: 1, folders: 0 };
       }
       const root = this.#liveFolder(accountId, id);
-      if (!root) throw E.invalid('La carpeta raiz no se puede borrar.');
+      if (!root) throw E.invalid('La carpeta raíz no se puede borrar.');
       const ids = this.db.all(`WITH RECURSIVE sub(id) AS (
           SELECT ? UNION ALL SELECT f.id FROM folders f JOIN sub ON f.parent_id = sub.id WHERE f.deleted_at IS NULL)
         SELECT id FROM sub`, root.id).map((r) => r.id);
@@ -318,7 +321,7 @@ export class CloudService {
     return this.db.tx(() => {
       const row = this.#trashRoot(accountId, type, id);
       if (!row.deleted_at) return { restored: 0, item: type === 'file' ? this.fileView(row) : this.folderView(row) };
-      if (!row.trash_root) throw E.invalid('Este elemento se borro junto con su carpeta: restaura la carpeta.');
+      if (!row.trash_root) throw E.invalid('Este elemento se borró junto con su carpeta: restaura la carpeta.');
       const table = type === 'file' ? 'files' : 'folders';
       // Si la carpeta de origen ya no existe (o sigue en la papelera), vuelve a
       // la raiz. Si el nombre esta ocupado, se renombra: nunca se pisa nada.
@@ -345,7 +348,7 @@ export class CloudService {
     const removed = this.db.tx(() => {
       let row = this.#trashRoot(accountId, type, id);
       if (!row.deleted_at) { this.trash(accountId, type, id); row = this.#trashRoot(accountId, type, id); }
-      if (!row.trash_root) throw E.invalid('Este elemento se borro junto con su carpeta: borra la carpeta.');
+      if (!row.trash_root) throw E.invalid('Este elemento se borró junto con su carpeta: borra la carpeta.');
       return this.#purgeBatch(accountId, row.trash_batch);
     });
     await this.#removeObjects(removed.keys);
@@ -397,7 +400,7 @@ export class CloudService {
     const okMagic = (mime === 'image/jpeg' && buffer[0] === 0xff && buffer[1] === 0xd8)
       || (mime === 'image/png' && buffer.subarray(0, 4).toString('latin1') === '\x89PNG')
       || (mime === 'image/webp' && buffer.subarray(0, 4).toString('latin1') === 'RIFF' && buffer.subarray(8, 12).toString('latin1') === 'WEBP');
-    if (!okMagic) throw E.invalid('La miniatura no es una imagen valida.');
+    if (!okMagic) throw E.invalid('La miniatura no es una imagen válida.');
     const f = this.#file(accountId, id);
     const key = newStorageKey();
     await this.store.putSmall(key, buffer);
@@ -427,7 +430,7 @@ export class CloudService {
   createUpload(accountId, body, source = 'web') {
     const name = normalizeName(body.name);
     const size = body.size;
-    if (!Number.isSafeInteger(size) || size < 0) throw E.invalid('El tamano del archivo no es valido.');
+    if (!Number.isSafeInteger(size) || size < 0) throw E.invalid('El tamaño del archivo no es válido.');
     if (size > this.cfg.maxFileBytes) throw E.fileTooLarge(this.cfg.maxFileBytes);
     const sha = body.sha256 === undefined || body.sha256 === null ? null : String(body.sha256).toLowerCase();
     if (sha !== null && !isHex64(sha)) throw E.invalid('sha256 debe ser hexadecimal de 64 caracteres.');
