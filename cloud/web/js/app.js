@@ -6,7 +6,7 @@ import { art } from './art.js';
 import { bytes, duration, escapeHtml, fullDate, initials, KIND_LABEL, kindOfMime, when } from './format.js';
 import { icon, kindIcon } from './icons.js';
 import { transfers } from './transfers.js';
-import { $, $$, closeMenú, closeModal, confirm, h, isModalOpen, menu, pickFolder, prompt, toast } from './ui.js';
+import { $, $$, closeMenú, closeModal, confirm, h, info, isModalOpen, menu, pickFolder, prompt, toast } from './ui.js';
 
 const LOGIN_URL = document.querySelector('meta[name="flex-account-login"]')?.content || '/login';
 const LOGOUT_URL = document.querySelector('meta[name="flex-account-logout"]')?.content || '/logout';
@@ -154,7 +154,7 @@ function shell() {
       <div class="spacer"></div>
       <div data-quota></div>
       <div class="side-sep"></div>
-      <div class="nav"><button data-act="device-info">${icon('device')} Flex OS Ultra</button></div>
+      <div class="nav"><button data-act="help">${icon('help')} Ayuda</button><button data-act="device-info">${icon('device')} Flex OS Ultra</button></div>
     </aside>
     <section class="main">
       <header class="topbar">
@@ -162,6 +162,7 @@ function shell() {
         <label class="search glass">${icon('search')}<span class="sr">Buscar</span>
           <input type="search" data-search placeholder="Buscar en Flex Cloud" autocomplete="off" spellcheck="false"></label>
         <div class="top-actions">
+          <button class="icon-btn" data-act="help" aria-label="Ayuda: guía rápida">${icon('help')}</button>
           <button class="icon-btn hide-sm" data-act="theme" aria-label="Tema">${icon(S.theme === 'light' ? 'moon' : 'sun')}</button>
           <button class="avatar" data-act="account" aria-label="Cuenta ${escapeHtml(a.flexAddress || '')}">${escapeHtml(initials(a.displayName || a.flexAddress))}</button>
         </div>
@@ -450,6 +451,7 @@ async function action(name, el) {
     case 'theme': S.theme = S.theme === 'light' ? 'dark' : 'light'; store.set('theme', S.theme); applyTheme(); el.innerHTML = icon(S.theme === 'light' ? 'moon' : 'sun'); break;
     case 'account': accountMenú(el); break;
     case 'device-info': deviceInfo(); break;
+    case 'help': helpGuide(); break;
     case 'sel-clear': S.sel.clear(); renderView(); break;
     case 'sel-trash': trashItems([...S.sel].map(itemById).filter(Boolean)); break;
     case 'sel-move': moveItems([...S.sel].map(itemById).filter(Boolean)); break;
@@ -495,6 +497,25 @@ function accountMenú(el) {
     if (S.health?.accountMode === 'dev') { await api.devLogout().catch(() => {}); location.reload(); } else location.href = LOGOUT_URL;
   } });
   menu(r.right - 260, r.bottom + 6, items);
+}
+
+// Guia rapida: corta a proposito (seis temas, una o dos frases cada uno).
+function helpGuide() {
+  const q = S.quota ? bytes(S.quota.totalBytes) : 'tu almacenamiento';
+  info({ title: 'Guía rápida de Flex Cloud', html: `<div class="help-list">
+    <details open><summary>${icon('upload')} Subir archivos</summary>
+      <p>Pulsa <strong>Subir</strong> y elige archivos o una carpeta entera, o arrástralos a esta ventana. Si se corta la conexión, la subida continúa donde se quedó.</p></details>
+    <details><summary>${icon('folder')} Carpetas</summary>
+      <p><strong>Subir › Nueva carpeta</strong> crea una. Entra con un toque y usa <strong>Mover a…</strong> en el menú ⋯ de cada archivo para ordenarlo.</p></details>
+    <details><summary>${icon('download')} Descargar</summary>
+      <p>En el menú ⋯ de un archivo, <strong>Descargar</strong> lo guarda original, sin perder calidad. <strong>Copiar enlace temporal</strong> te da un enlace que caduca.</p></details>
+    <details><summary>${icon('device')} Verlo desde Flex OS</summary>
+      <p>En tu Flex OS Ultra abre <strong>Archivos › Flex Cloud</strong>, la pestaña <strong>Nube</strong> de la Galería o la de Multimedia. Es la misma nube que ves aquí.</p></details>
+    <details><summary>${icon('cloud')} Qué significa el almacenamiento</summary>
+      <p>Tienes ${escapeHtml(q)} en total. Cuenta todo lo guardado, <strong>también la papelera</strong>: para liberar espacio, vacíala o borra definitivamente.</p></details>
+    <details><summary>${icon('alert')} Si la cuenta se desvincula</summary>
+      <p>Si en el P4 se desvincula (o aparece "Vuelve a iniciar sesión"), la nube se desactiva en el dispositivo hasta vincularlo de nuevo en <strong>Ajustes › Flex Account</strong>. Tus archivos siguen aquí.</p></details>
+  </div>` });
 }
 
 function deviceInfo() {

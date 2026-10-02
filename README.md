@@ -5,6 +5,7 @@ Plataforma oficial para crear, firmar y publicar aplicaciones para Flex OS Ultra
 - Sitio público: https://flex-developer-studio.ralvarezsantos980.chatgpt.site
 - Flex SDK: `sdk/`
 - Flex Cloud (servicio + web): `cloud/` — ver [cloud/README.md](cloud/README.md)
+- Flex Cloud en la web: ruta fija **`/cloud/`** del sitio público (https://flex-developer-studio.ralvarezsantos980.chatgpt.site/cloud/); entra con Flex Account
 - Formato firmado: `.flexpkg` / FLXP v1
 - Objetivo de hardware: ESP32-P4 con Flex OS Ultra
 

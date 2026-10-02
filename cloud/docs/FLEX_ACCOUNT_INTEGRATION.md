@@ -90,6 +90,15 @@ https://flex-developer-studio…/*             → Flex Developer Studio (sin ca
   limitador de intentos).
 - `FLEX_CLOUD_PUBLIC_URL=https://flex-developer-studio…` para los enlaces
   firmados.
+- La web de Flex Cloud responde en **`/cloud/`** (y `/cloud` redirige a `/cloud/`);
+  esa es la ruta estable. Si el servicio va detrás de un proxy, basta con
+  reenviarle `/cloud*` y `/api/cloud/*` sin reescribir nada: también sirve la
+  web en su propia raíz (puerto propio, sin proxy).
+- **Acceso directo desde Flex Developer Studio**: el sitio de Studio no está en
+  este repositorio, así que el enlace se añade allí (barra de navegación, panel
+  de la cuenta o página de inicio) con la ruta relativa, sin dominio fijo:
+  `<a href="/cloud/">Flex Cloud</a>`. Quien no tenga sesión pasa por
+  `/login?next=/cloud/` y vuelve a Flex Cloud.
 - En `web/index.html`, `flex-account-login` y `flex-account-logout` apuntan a
   las páginas de entrada y salida de Flex Developer Studio.
 

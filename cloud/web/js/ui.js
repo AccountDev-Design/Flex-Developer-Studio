@@ -90,6 +90,17 @@ export function confirm({ title, text, ok = 'Aceptar', danger = false }) {
   });
 }
 
+// Dialogo informativo (ayuda): `html` lo escribe la propia web, nunca el usuario.
+export function info({ title, html, ok = 'Entendido' }) {
+  const d = h(`<div class="dialog glass help" role="dialog" aria-modal="true" aria-labelledby="dlg-t">
+    <h3 id="dlg-t">${escapeHtml(title)}</h3>${html}
+    <div class="actions"><button class="btn primary" data-ok>${escapeHtml(ok)}</button></div></div>`);
+  const close = openScrim(d);
+  d.querySelector('[data-ok]').onclick = close;
+  setTimeout(() => d.querySelector('[data-ok]').focus(), 30);
+  return close;
+}
+
 // Selector de carpeta destino (Mover). `load(id)` devuelve {folder, items}.
 export function pickFolder({ title, load, exclude = new Set() }) {
   return new Promise((resolve) => {

@@ -10,6 +10,7 @@ import { Router } from './router.js';
 import { RateLimiter, clientIp, parseRange, partDigest, readBuffer, readJson, securityHeaders, sendJson } from './util.js';
 
 const API = '/api/cloud';
+const WEB_BASE = '/cloud';           // ruta publica de la web (ver docs/FLEX_ACCOUNT_INTEGRATION.md)
 const STATIC_TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json; charset=utf-8',
@@ -283,9 +284,20 @@ export function createApp({ cfg, service, gateway, log }) {
   }
 
   // -------------------------------------------------------------- estaticos
+  // La web vive en WEB_BASE (la ruta publica documentada: .../cloud/) y tambien
+  // en la raiz del servicio (puerto propio, sin proxy). Sin la barra final, los
+  // enlaces relativos de index.html (css/, js/) apuntarian fuera de /cloud/.
   async function serveStatic(req, res, path) {
     if (req.method !== 'GET' && req.method !== 'HEAD') { res.statusCode = 405; res.end(); return; }
-    let rel = decodeURIComponent(path);
+    if (path === WEB_BASE) {
+      res.statusCode = 301;
+      res.setHeader('Location', `${WEB_BASE}/${req.url.slice(path.length)}`);
+      res.end();
+      return;
+    }
+    if (path.startsWith(`${WEB_BASE}/`)) path = path.slice(WEB_BASE.length);
+    let rel;
+    try { rel = decodeURIComponent(path); } catch { res.statusCode = 400; res.end(); return; }
     if (rel === '/' || !extname(rel)) rel = '/index.html';           // SPA
     const file = normalize(join(cfg.webDir, rel));
     if (!file.startsWith(cfg.webDir + sep)) { res.statusCode = 404; res.end(); return; }

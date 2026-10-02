@@ -104,7 +104,7 @@ svg.i.lg { width: 24px; height: 24px; }
 .topbar { display: flex; align-items: center; gap: 12px; padding: 12px 16px 6px; }
 .icon-btn.menu-btn { display: none; }
 .search {
-  flex: 1; max-width: 620px; display: flex; align-items: center; gap: 10px; padding: 0 14px; height: 46px;
+  flex: 1; min-width: 0; max-width: 620px; display: flex; align-items: center; gap: 10px; padding: 0 14px; height: 46px;
   border-radius: 999px; transition: box-shadow .2s;
 }
 .search:focus-within { box-shadow: 0 0 0 2px color-mix(in srgb, var(--pri) 55%, transparent), var(--shadow); }
@@ -251,6 +251,13 @@ select.sort { height: 38px; border-radius: 12px; border: 1px solid var(--edge2);
 .dialog .field { width: 100%; height: 46px; border-radius: 13px; border: 1px solid var(--edge); background: var(--surface2); padding: 0 14px; outline: none; margin-bottom: 8px; }
 .dialog .field:focus { border-color: var(--pri2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pri) 30%, transparent); }
 .dialog .err { color: var(--err); font-size: 13px; min-height: 18px; }
+.dialog.help { width: min(480px, 100%); max-height: min(86vh, 640px); overflow-y: auto; }
+.help-list { display: grid; gap: 8px; margin-bottom: 4px; }
+.help-list details { border: 1px solid var(--edge); border-radius: 13px; background: var(--surface2); padding: 0 14px; }
+.help-list summary { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; font-weight: 600; list-style: none; }
+.help-list summary::-webkit-details-marker { display: none; }
+.help-list summary svg { width: 18px; height: 18px; flex: none; }
+.help-list details p { margin: 0 0 12px; font-size: 14px; }
 .dialog .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; }
 .picker { max-height: 300px; overflow: auto; border: 1px solid var(--edge2); border-radius: 13px; margin-bottom: 8px; }
 .picker button { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--edge2); }

@@ -10,6 +10,15 @@ y los mismos archivos**.
 - Descargas y vídeo por rangos (`Range`), sin cargar el archivo entero.
 - Carpetas, papelera con restauración, búsqueda, miniaturas, enlaces temporales.
 
+## Dónde se abre
+
+- En Flex Developer Studio: **`/cloud/`** (ruta fija; `/cloud` redirige). El
+  servicio la sirve él mismo, también sin proxy en `http://127.0.0.1:8787/cloud/`.
+- Dentro de la web hay una **Ayuda** (icono ? arriba y «Ayuda» en la barra
+  lateral): guía rápida de subir, carpetas, descargar, verlo desde Flex OS,
+  qué cuenta del almacenamiento y qué hacer si la cuenta se desvincula.
+- En el P4: Archivos › Flex Cloud, y la pestaña Nube de Galería y Multimedia.
+
 ## Ejecutar
 
 Requiere Node.js ≥ 22.13. Sin `npm install`: no tiene dependencias de ejecución.
@@ -46,7 +55,7 @@ npm start
 ## Pruebas
 
 ```bash
-npm test             # API, cuota, papelera, subidas, rangos, seguridad, Flex Account (43)
+npm test             # API, cuota, papelera, subidas, rangos, seguridad, Flex Account, ruta /cloud/ y ayuda (57)
 npm run test:large   # 10 / 50 / 160 / 500 MB con corte, reanudación y rangos
 npm run test:e2e     # la web en Chromium (Playwright): 26 comprobaciones
 npm run check        # sintaxis + la web solo carga scripts propios
