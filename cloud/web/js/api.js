@@ -1,8 +1,30 @@
 // Cliente de la API de Flex Cloud. La sesion es la cookie de Flex Account; la
 // cabecera X-Flex-Cloud demuestra que la peticion sale de esta web (CSRF).
+// SESION PERDIDA. Un 401 de la API siempre significa lo mismo: Flex Account ya
+// no reconoce esta sesion (cerrada en otra pestana, caducada o dispositivo
+// desvinculado). Antes solo el arranque y el listado lo miraban: `refreshQuota`
+// se tragaba cualquier error, las acciones solo ensenaban un aviso y las
+// transferencias fabrican sus propios ApiError, asi que la web se quedaba
+// "conectada" con los datos viejos. Ahora el aviso sale del propio constructor
+// del error: venga la peticion de donde venga, la interfaz se entera UNA vez.
+let authLostHandler = null;
+let authLostAnnounced = false;
+export const onAuthLost = (fn) => { authLostHandler = fn; };
+export const resetAuthLost = () => { authLostAnnounced = false; };
+function announceAuthLost(err) {
+  if (authLostAnnounced || !authLostHandler) return;
+  authLostAnnounced = true;
+  // En una microtarea: el error se termina de construir y quien lo lanzo sigue su camino.
+  queueMicrotask(() => { try { authLostHandler(err); } catch { /* la interfaz decide que hacer */ } });
+}
+
 export class ApiError extends Error {
-  constructor(status, code, message, details) { super(message); this.status = status; this.code = code; this.details = details; }
+  constructor(status, code, message, details) {
+    super(message); this.status = status; this.code = code; this.details = details;
+    if (status === 401) announceAuthLost(this);
+  }
   get offline() { return this.code === 'network'; }
+  get authLost() { return this.status === 401; }
 }
 
 const BASE = document.querySelector('meta[name="flex-cloud-api"]')?.content || '/api/cloud';
