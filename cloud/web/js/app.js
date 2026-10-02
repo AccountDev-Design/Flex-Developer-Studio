@@ -1,7 +1,7 @@
 // Flex Cloud Web · controlador principal.
 // Rutas por hash (#/, #/f/<carpeta>, #/recent, #/media, #/trash, #/search/<q>)
 // para que la app funcione igual servida en / o bajo /cloud/.
-import { api, ApiError } from './api.js';
+import { api, ApiError, onAuthLost, resetAuthLost } from './api.js';
 import { art } from './art.js';
 import { bytes, duration, escapeHtml, fullDate, initials, KIND_LABEL, kindOfMime, when } from './format.js';
 import { icon, kindIcon } from './icons.js';
@@ -44,6 +44,7 @@ const folderHash = (id) => (!id || id === 'root' ? '#/' : `#/f/${id}`);
 
 // ------------------------------------------------------------- arranque
 async function boot() {
+  resetAuthLost();                                    // una sesion nueva puede volver a perderse
   root.innerHTML = `<div class="gate"><div class="gate-card glass"><div class="skel" style="height:180px"></div><div class="skel skel-line" style="margin:18px auto 8px;width:60%"></div><div class="skel skel-line" style="width:80%;margin:auto"></div></div></div>`;
   try { S.health = (await api.health()); } catch { S.health = null; }
   try {
@@ -66,10 +67,41 @@ async function boot() {
   addEventListener('beforeunload', (e) => { if (transfers.active().some((t) => t.type === 'upload' && t.file)) { e.preventDefault(); e.returnValue = ''; } });
   setupDrop();
   setupKeys();
+  watchSession();
+}
+
+// ------------------------------------------- sesion perdida (Flex Account)
+// Un 401 en CUALQUIER peticion (lista, cuota, partes, descargas...) llega aqui
+// por api.js. Mientras el arranque no haya terminado no es una sesion que se
+// perdio: lo trata boot().
+onAuthLost((err) => {
+  if (!S.me) return;
+  S.me = null;
+  try { closeMenú(); closeModal(); closeDetails(); closeViewer(); } catch { /* lo que hubiera abierto */ }
+  gate(err, { lost: true });
+});
+
+// Sin tocar nada tambien se entera: al volver a la pestana y cada 5 minutos se
+// pregunta a Flex Cloud quien es la sesion (barato: Flex Cloud la cachea 30 s).
+// Un 401 lo anuncia onAuthLost; la red caida ya la ensena el aviso de conexion.
+let watching = false, lastCheckAt = 0;
+async function checkSession() {
+  if (!S.me || document.visibilityState === 'hidden') return;
+  const now = Date.now();
+  if (now - lastCheckAt < 20_000) return;
+  lastCheckAt = now;
+  try { const me = await api.me(); S.quota = me.quota; renderQuota(); } catch { /* 401: onAuthLost; otro fallo: se queda lo que habia */ }
+}
+function watchSession() {
+  if (watching) return;                               // boot() puede repetirse (reintentar, modo desarrollo)
+  watching = true;
+  document.addEventListener('visibilitychange', checkSession);
+  addEventListener('focus', checkSession);
+  setInterval(checkSession, 5 * 60_000);
 }
 
 // ----------------------------------------------------------- acceso
-function gate(err) {
+function gate(err, { lost = false } = {}) {
   const dev = S.health?.devLogin;
   let artHtml = art.welcome(), title = 'Tu nube Flex', text = 'Tus fotos, vídeos y archivos, en Flex Developer Studio y en tu Flex OS Ultra. Con tu Flex Account, sin otra contraseña.', actions = '';
   if (err instanceof ApiError && err.offline) {
@@ -80,7 +112,12 @@ function gate(err) {
     artHtml = art.error(); title = 'Flex Account no responde'; text = 'No es tu cuenta ni tus archivos: el servicio de identidad no contesta ahora mismo. Prueba en unos segundos.';
     actions = `<button class="btn primary" data-retry>${icon('retry')} Reintentar</button>`;
   } else {
-    if (err?.code === 'token_expired') text = 'Tu sesión caducó. Vuelve a entrar con tu Flex Account.';
+    if (lost) {
+      title = 'Tu sesión terminó';
+      text = err?.code === 'token_expired' ? 'Tu sesión caducó. Vuelve a entrar con tu Flex Account; tus archivos siguen en tu nube.'
+        : err?.code === 'device_revoked' ? 'Este dispositivo ya no está vinculado a tu cuenta. Vuelve a vincularlo; tus archivos siguen en tu nube.'
+        : 'Flex Account ya no reconoce esta sesión: la cerraste, caducó o se desvinculó. Inicia sesión de nuevo; tus archivos siguen en tu nube.';
+    } else if (err?.code === 'token_expired') text = 'Tu sesión caducó. Vuelve a entrar con tu Flex Account.';
     actions = `<a class="btn primary" href="${escapeHtml(LOGIN_URL)}">${icon('shield')} Iniciar sesión con Flex Account</a>`;
   }
   root.innerHTML = `<main class="gate"><div class="gate-card glass">${artHtml}
@@ -221,7 +258,7 @@ async function loadView() {
     S.items = r.items; S.next = r.nextCursor; S.folder = r.folder;
   } catch (e) {
     if (seq !== S.loadSeq) return;
-    if (e.status === 401) return gate(e);
+    if (e.status === 401) return;                      // onAuthLost ya ensena la pantalla de acceso
     S.error = e;
   } finally {
     if (seq === S.loadSeq) { S.loading = false; renderView(); }

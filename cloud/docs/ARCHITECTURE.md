@@ -73,6 +73,28 @@ recibidos (verificados por SHA-256) y los devuelve igual. Las miniaturas las
 genera el cliente (la web con `<canvas>`, el P4 con su codificador JPEG) y se
 guardan como objetos separados.
 
+## Sesión perdida (qué ve cada cliente)
+
+Un `401` de la API siempre significa lo mismo: Flex Account ya no reconoce la
+credencial (`auth_required`: sin sesión o cerrada; `token_expired`: caducó;
+`device_revoked`: el dispositivo se desvinculó). Si Flex Account no contesta es
+un `503 account_unavailable`, **nunca** un 401: no se desvincula a nadie por una
+caída.
+
+- **P4**: ve el 401, pide a Flex Account que lo compruebe y pasa a «Vuelve a
+  vincular tu cuenta» (ver `docs/FLEX-CLOUD.md` del firmware).
+- **Web** (`web/js/api.js` + `app.js`): cualquier petición que reciba un 401
+  (lista, cuota, partes subidas por XHR, descargas) lo anuncia **una vez** desde
+  el constructor de `ApiError` y la interfaz vuelve a la pantalla de acceso con
+  «Tu sesión terminó». Antes solo el arranque y el listado lo miraban:
+  `refreshQuota` se tragaba el error y la web se quedaba «conectada» con datos
+  viejos. Además la sesión se comprueba sola (`GET /me`, como mucho cada 20 s) al
+  volver a la pestaña y cada 5 minutos. `test/web.test.js` lo prueba, incluida la
+  revocación contra el servidor real.
+- **Latencia**: Flex Cloud cachea 30 s (`FLEX_ACCOUNT_CACHE_MS`) lo que Flex
+  Account responde, así que una revocación se nota, como mucho, ese tiempo
+  después (más hasta 5 min si Flex Account está caída: *stale-if-error*).
+
 ## Límites conocidos
 
 - Un solo proceso: los cerrojos de confirmación de partes son en memoria.
