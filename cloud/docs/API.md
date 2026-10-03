@@ -90,3 +90,72 @@ liberan su reserva.
 `part_size_mismatch`, `checksum_mismatch`, `part_conflict`, `incomplete_upload`,
 `range_not_satisfiable`, `link_invalid`, `rate_limited`, `method_not_allowed`,
 `internal_error`.
+
+## Perfil teléfono (Flex Storage)
+
+Flex OS Ultra también puede usar como Flex Cloud **un teléfono Android
+emparejado** (Flex Phone › Flex Cloud). El teléfono habla **este mismo
+contrato** (`/api/cloud/...`, mismas formas JSON, mismos códigos de error), de
+modo que el gestor de Flex Cloud del P4 y su web no cambian según el destino.
+El servidor del teléfono vive en el repositorio del firmware
+(`android/FlexPhone/storage/`, módulo JVM sin dependencias) y su diseño
+completo está en `docs/FLEX-STORAGE.md` de ese repositorio. Este servicio no
+habla con el teléfono ni lo necesita.
+
+Lo que cambia respecto al servicio:
+
+| | Servicio (este repositorio) | Teléfono (Flex Phone) |
+|---|---|---|
+| Dónde escucha | Servidor con Flex Account | Solo en la IP de la Wi-Fi del teléfono, puerto 47830 (u otro libre); conexiones de fuera de la red local se cierran sin contestar |
+| Quién entra | Cookie de sesión o credencial de dispositivo | Solo el Flex OS emparejado: `Authorization: Bearer <token de sesión>` |
+| Cuenta | Flex Account | Ninguna. `/me` devuelve `account.id = "phone:<id>"` y `device.kind = "phone"` |
+| Cuota | La del plan | 1, 2 o 5 GB lógicos, los elige la persona en el teléfono (`plan: "phone"`) |
+| Partes de subida | 64 KB – 64 MB | 64 KB – 16 MB (8 MB por defecto; los límites salen en `/me` → `limits`) |
+| Archivo más grande | 50 GB (`FLEX_CLOUD_MAX_FILE_BYTES`) | 4 GB − 16 B (lo que el P4 sabe recorrer con 32 bits) |
+| Conexiones | Las del servidor | 6 a la vez; la séptima recibe `503 server_busy` al instante (nunca se queda colgada) |
+
+**Sesión** (sin cuenta: la autorización es la clave `K` de 32 bytes que el P4
+y el teléfono acordaron al emparejarse con ECDH; `K` no viaja nunca):
+
+1. `GET /api/fs/hello` → `{ service: "flex-storage", phoneId, name, model, paired, port }`
+   (sin autenticación; nada privado).
+2. `GET /api/fs/challenge` → `{ nonce, expiresIn: 60, phoneId }`. Cada reto
+   vale 60 s y una sola vez; como mucho 16 vivos.
+3. `POST /api/fs/session` `{ p4Id, nonce, mac }` con
+   `mac = HMAC-SHA256(K, "flexstorage-v1-sess" ‖ lp(nonce) ‖ lp(p4Id))`
+   (`lp` = el campo con un byte de longitud delante) → `{ token, expiresIn,
+   mac, phoneId, name }`, donde la `mac` de vuelta es
+   `HMAC-SHA256(K, "flexstorage-v1-sess-ok" ‖ lp(nonce) ‖ lp(token))`: el P4
+   comprueba que el teléfono también tiene `K` antes de usar el token.
+
+El token (24 bytes aleatorios) **solo vale desde la IP que abrió la sesión**,
+caduca a los 30 min sin uso y a las 12 h pase lo que pase, y hay como mucho 4
+sesiones (la más vieja cede su sitio). Diez fallos de autenticación en un
+minuto desde una IP la bloquean un minuto (`429 rate_limited`). Un P4 que el
+teléfono ya no reconoce recibe `403 device_revoked`.
+
+**Cuota**: además de los campos de siempre, `GET /quota` y `/me` añaden
+`deviceFreeBytes` (lo que el teléfono tiene libre de verdad) y
+`limitedByDevice`. Android no deja reservar una partición para una app, así
+que `availableBytes` es el **menor** de dos: lo que queda de la cuota y el
+espacio libre del teléfono menos un margen de 512 MB (para no dejar al móvil
+sin sitio). `limitedByDevice: true` dice que manda el teléfono; un cliente que
+no conozca estos campos los ignora y sigue siendo correcto. Una subida que no
+cabe en el teléfono responde `507 quota_exceeded` con `details.available`.
+
+**Enlaces firmados**: `POST /files/:id/link` devuelve una `url` con la **IP
+local del teléfono** (`http://<ip>:<puerto>/api/cloud/d/<token>`): 15 minutos,
+un solo archivo, solo lectura. Esas respuestas llevan
+`Cross-Origin-Resource-Policy: cross-origin` porque las usa la web del P4
+(otro origen) en `<img>` y `<video>`; las demás, `same-origin`.
+
+**Límites del servidor del teléfono**: cabeceras ≤ 16 KB y ≤ 64, JSON ≤ 64 KB,
+miniaturas ≤ 512 KB, plazo de lectura de 30 s por socket. Todo lo demás
+(carpetas, papelera de 30 días, subidas reanudables de 72 h, `Range`/`206`,
+`ETag`/`If-Range`, `inline` seguro) se comporta como en el servicio.
+
+**SHA-256 en la web**: las webs de Flex Cloud (la de este repositorio y la del
+P4) se pueden abrir por `http://` desde la red local, donde el navegador no
+ofrece `crypto.subtle`. Las dos calculan entonces la huella de cada parte en
+JavaScript (`web/js/sha256.js` aquí), con el mismo resultado; se prueba contra
+`node:crypto` en `test/sha256.test.js`.

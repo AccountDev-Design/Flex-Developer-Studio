@@ -510,7 +510,8 @@ function helpGuide() {
     <details><summary>${icon('download')} Descargar</summary>
       <p>En el menú ⋯ de un archivo, <strong>Descargar</strong> lo guarda original, sin perder calidad. <strong>Copiar enlace temporal</strong> te da un enlace que caduca.</p></details>
     <details><summary>${icon('device')} Verlo desde Flex OS</summary>
-      <p>En tu Flex OS Ultra abre <strong>Archivos › Flex Cloud</strong>, la pestaña <strong>Nube</strong> de la Galería o la de Multimedia. Es la misma nube que ves aquí.</p></details>
+      <p>En tu Flex OS Ultra abre <strong>Archivos › Flex Cloud</strong>, la pestaña <strong>Nube</strong> de la Galería o la de Multimedia. Es la misma nube que ves aquí.</p>
+      <p>Si en Flex OS usas <strong>tu teléfono como Flex Cloud</strong> (Flex Storage, sin cuenta), esos archivos se guardan en el teléfono y se gestionan desde la web de Flex OS, no aquí.</p></details>
     <details><summary>${icon('cloud')} Qué significa el almacenamiento</summary>
       <p>Tienes ${escapeHtml(q)} en total. Cuenta todo lo guardado, <strong>también la papelera</strong>: para liberar espacio, vacíala o borra definitivamente.</p></details>
     <details><summary>${icon('alert')} Si la cuenta se desvincula</summary>
