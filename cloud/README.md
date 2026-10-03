@@ -55,9 +55,9 @@ npm start
 ## Pruebas
 
 ```bash
-npm test             # API, cuota, papelera, subidas, rangos, seguridad, Flex Account, ruta /cloud/ y ayuda (57)
+npm test             # API, cuota, papelera, subidas, rangos, seguridad, Flex Account, ruta /cloud/, ayuda y SHA-256 sin crypto.subtle (62)
 npm run test:large   # 10 / 50 / 160 / 500 MB con corte, reanudación y rangos
-npm run test:e2e     # la web en Chromium (Playwright): 26 comprobaciones
+npm run test:e2e     # la web en Chromium (Playwright): 28 comprobaciones
 npm run check        # sintaxis + la web solo carga scripts propios
 ```
 

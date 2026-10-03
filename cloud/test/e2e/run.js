@@ -197,6 +197,26 @@ try {
   const overflow = await page.evaluate(() => document.querySelector('.content').scrollWidth > document.querySelector('.content').clientWidth + 1);
   ok(!overflow, 'movil: sin desplazamiento horizontal');
 
+  // ---- sin crypto.subtle (la web abierta por http:// desde la red local)
+  // El navegador solo ofrece crypto.subtle en https o en localhost: en otra
+  // pestana de la misma sesion se quita y se sube un archivo de dos partes. Las
+  // huellas las calcula sha256.js y el servidor tiene que aceptarlas.
+  const lan = await ctx.newPage();
+  lan.on('pageerror', (e) => errors.push(e.message));
+  await lan.addInitScript(() => Object.defineProperty(Crypto.prototype, 'subtle', { get: () => undefined, configurable: true }));
+  await lan.goto(base + '#/');
+  await lan.waitForSelector('.app');
+  ok(await lan.evaluate(() => typeof crypto.subtle) === 'undefined', 'sin subtle: la pestana no tiene crypto.subtle');
+  const plain = bytesOf(8 * 1024 * 1024 + 4321, 11);
+  await lan.setInputFiles('[data-pick]', [{ name: 'sin subtle.bin', mimeType: 'application/octet-stream', buffer: plain }]);
+  let plainItem = null;
+  for (let i = 0; i < 120 && !plainItem; i++) {
+    plainItem = (await api('/files')).items.find((x) => x.name === 'sin subtle.bin');
+    if (!plainItem) await lan.waitForTimeout(250);
+  }
+  ok(plainItem && plainItem.size === plain.length && plainItem.sha256 === sha(plain), 'sin subtle: subida de dos partes aceptada y byte a byte');
+  await lan.close();
+
   ok(errors.length === 0, `sin errores en la consola${errors.length ? ': ' + errors.join(' | ') : ''}`);
 } catch (e) {
   fails++;

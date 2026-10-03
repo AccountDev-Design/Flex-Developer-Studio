@@ -1,9 +1,10 @@
 // Subidas y descargas de Flex Cloud en el navegador.
 //
 // SUBIDAS. Por partes de 8 MB, tres a la vez por archivo y dos archivos a la
-// vez. Cada parte lleva su SHA-256 (WebCrypto) y el servidor la rechaza si no
-// cuadra. Si se va el Wi-Fi, la subida espera a que vuelva y sigue por la parte
-// en la que iba; si el servidor falla, reintenta con espera creciente (1 s ..
+// vez. Cada parte lleva su SHA-256 (WebCrypto, o sha256.js si la web se abre
+// por http:// desde la red local) y el servidor la rechaza si no cuadra. Si se
+// va el Wi-Fi, la subida espera a que vuelva y sigue por la parte en la que
+// iba; si el servidor falla, reintenta con espera creciente (1 s ..
 // 30 s) y se rinde tras varios fallos seguidos, dejando "Reintentar". Si se
 // recarga la pagina, la sesion sigue en el servidor: al volver a elegir el
 // mismo archivo continua donde se quedo (el navegador no deja reabrir un
@@ -14,6 +15,7 @@
 // archivos medianos se bajan con progreso y los enormes se dejan al gestor de
 // descargas del navegador, que ya sabe reanudar.
 import { api, ApiError } from './api.js';
+import { sha256Hex } from './sha256.js';
 import { makeThumb } from './thumbs.js';
 
 const PART = 8 * 1024 * 1024;
@@ -30,7 +32,6 @@ function fnv1a(s) {
   for (const ch of s) { h ^= ch.codePointAt(0); h = Math.imul(h, 0x01000193) >>> 0; }
   return h.toString(16).padStart(8, '0');
 }
-const hex = (buf) => Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function loadStore() { try { return JSON.parse(localStorage.getItem(STORE) || '[]'); } catch { return []; } }
@@ -222,7 +223,9 @@ export class Transfers extends EventTarget {
     const start = (n - 1) * t.chunk;
     const end = Math.min(t.size, start + t.chunk);
     const buf = await t.file.slice(start, end).arrayBuffer();
-    const digest = hex(await crypto.subtle.digest('SHA-256', buf));
+    // crypto.subtle solo existe con https o en localhost: por http:// desde la
+    // red local se calcula en JavaScript (sha256.js), con el mismo resultado.
+    const digest = await sha256Hex(buf);
     if (t.cancelled) throw new Stop();
     await new Promise((resolve, reject) => {
       const x = new XMLHttpRequest();
